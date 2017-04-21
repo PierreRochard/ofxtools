@@ -54,10 +54,6 @@ setup(
 
     install_requires=['requests'],
 
-    extras_require={
-        ":python_version < '3.3'": ['mock'],
-    },
-
     package_data={
         'ofxtools': ['README.md', 'config/*.cfg', 'tests/*'],
     },
