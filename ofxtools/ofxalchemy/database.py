@@ -12,6 +12,7 @@ import sqlite3
 from sqlalchemy import (
     create_engine,
     event,
+    MetaData
 )
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import (
@@ -24,12 +25,15 @@ from sqlalchemy.ext.declarative import (
     has_inherited_table,
 )
 
-
 Session = scoped_session(sessionmaker(autocommit=False, autoflush=True,))
 
 
 @contextmanager
-def sessionmanager():
+def sessionmanager(sqla_uri, schema):
+    engine = create_engine(sqla_uri)
+    Base.metadata.schema = schema
+    session_maker = sessionmaker(bind=engine)
+    session = session_maker()
     try:
         yield Session
         Session.commit()
@@ -48,6 +52,14 @@ def init_db(db_uri, schema=None, **kwargs):
     return engine
 
 
+def get_session(db_uri, schema=None, **kwargs):
+    engine = create_engine(db_uri, **kwargs)
+    Base.metadata.schema = schema
+    Session.configure(bind=engine)
+    Base.query = Session.query_property()
+    return Session
+
+
 @as_declarative()
 class Base(object):
     """
@@ -60,6 +72,7 @@ class Base(object):
     transitory representations are modelled in ofxalchemy.Parser.
     """
     query = Session.query_property()
+    metadata = MetaData(schema='ofx')
 
     @declared_attr
     def __tablename__(cls):
