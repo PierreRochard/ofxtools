@@ -4,26 +4,23 @@ Data structures for bank download - OFX Section 11
 """
 # local imports
 from ofxtools.Types import (
-    String,
-    NagString,
-    Decimal,
-    Integer,
-    OneOf,
-    DateTime,
+    String, NagString, Decimal, Integer, OneOf, DateTime, Bool,
 )
 from ofxtools.models.base import (
-    Aggregate,
-    List,
-    TranList,
-    SubAggregate,
-    Unsupported,
+    Aggregate, List, TranList, SubAggregate, Unsupported,
 )
-from ofxtools.models.common import STATUS
+from ofxtools.models.common import (STATUS, MSGSETCORE)
 from ofxtools.models.i18n import (
     CURRENCY, ORIGCURRENCY,
     Origcurrency,
     CURRENCY_CODES, COUNTRY_CODES,
 )
+
+
+__all__ = ['BANKACCTFROM', 'CCACCTFROM', 'BANKACCTTO', 'CCACCTTO', 'PAYEE',
+           'LEDGERBAL', 'AVAILBAL', 'BALLIST', 'STMTTRN', 'BANKTRANLIST',
+           'STMTRQ', 'STMTRS', 'STMTTRNRQ', 'STMTTRNRS', 'BANKMSGSRQV1',
+           'BANKMSGSRSV1', 'BANKMSGSETV1', 'BANKMSGSET', 'EMAILPROF', ]
 
 
 # Enums used in aggregate validation
@@ -65,6 +62,21 @@ class CCACCTTO(Aggregate):
     """ OFX section 11.3.2 """
     acctid = String(22, required=True)
     acctkey = String(22)
+
+
+class INCTRAN(Aggregate):
+    """ OFX section 11.4.2.1 """
+    dtstart = DateTime()
+    dtend = DateTime()
+    include = Bool(required=True)
+
+
+class STMTRQ(Aggregate):
+    """ OFX section 11.4.2.1 """
+    bankacctfrom = SubAggregate(BANKACCTFROM, required=True)
+    inctran = SubAggregate(INCTRAN)
+    includepending = Bool()
+    inctranimg = Bool()
 
 
 class PAYEE(Aggregate):
@@ -149,11 +161,6 @@ class STMTRS(Aggregate):
     ballist = SubAggregate(BALLIST)
     mktginfo = String(360)
 
-    # Human-friendly attribute aliases
-    @property
-    def currency(self):
-        return self.curdef
-
     @property
     def account(self):
         return self.bankacctfrom
@@ -167,6 +174,12 @@ class STMTRS(Aggregate):
         return self.ledgerbal
 
 
+class STMTTRNRQ(Aggregate):
+    """ OFX section 11.4.2.1 """
+    trnuid = String(36, required=True)
+    stmtrq = SubAggregate(STMTRQ)
+
+
 class STMTTRNRS(Aggregate):
     """ OFX section 11.4.2.2 """
     trnuid = String(36, required=True)
@@ -178,6 +191,11 @@ class STMTTRNRS(Aggregate):
         return self.stmtrs
 
 
+class BANKMSGSRQV1(List):
+    """ OFX section 11.13.1.1.1 """
+    memberTags = ['STMTTRNRQ', ]
+
+
 class BANKMSGSRSV1(List):
     """ OFX section 11.13.1.1.2 """
     memberTags = ['STMTTRNRS', ]
@@ -185,3 +203,26 @@ class BANKMSGSRSV1(List):
     @property
     def statements(self):
         return [trnrs.stmtrs for trnrs in self]
+
+
+class EMAILPROF(Aggregate):
+    """ OFX section 11.13.2.4 """
+    canemail = Bool(required=True)
+    cannotify = Bool(required=True)
+
+
+class BANKMSGSETV1(Aggregate):
+    """ OFX section 11.13.2.1 """
+    msgsetcore = SubAggregate(MSGSETCORE, required=True)
+    invalidaccttype = OneOf(*ACCTTYPES)
+    closingavail = Bool(required=True)
+    pendingavail = Bool()
+    xferprof = Unsupported()
+    stopchkprof = Unsupported()
+    emailprof = SubAggregate(EMAILPROF, required=True)
+    imageprof = Unsupported()
+
+
+class BANKMSGSET(Aggregate):
+    """ OFX section 7.3 """
+    bankmsgsetv1 = SubAggregate(BANKMSGSETV1, required=True)

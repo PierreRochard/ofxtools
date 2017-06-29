@@ -7,14 +7,13 @@ from ofxtools.models.base import (
     Aggregate, List, TranList, SubAggregate, Unsupported,
 )
 from ofxtools.models.common import (
-    STATUS, OFXEXTENSION,
+    STATUS, OFXEXTENSION, MSGSETCORE,
 )
 from ofxtools.models.bank import (
-    STMTTRN, BALLIST, INV401KSOURCES
+    STMTTRN, INCTRAN, BALLIST, INV401KSOURCES,
 )
 from ofxtools.models.seclist import (
     SECID,
-    Secid,
 )
 from ofxtools.models.i18n import (
     CURRENCY, ORIGCURRENCY,
@@ -24,6 +23,20 @@ from ofxtools.models.i18n import (
 from ofxtools.Types import (
     Bool, String, OneOf, Integer, Decimal, DateTime,
 )
+
+
+__all__ = ['INVACCTFROM', 'INVBAL', 'INV401KBAL', 'INVTRAN', 'INVBUY',
+           'INVSELL', 'OO', 'INVBANKTRAN', 'REINVEST', 'RETOFCAP', 'SPLIT',
+           'TRANSFER', 'CLOSUREOPT', 'INCOME', 'INVEXPENSE', 'JRNLFUND',
+           'JRNLSEC', 'MARGININTEREST', 'BUYDEBT', 'BUYMF', 'BUYOPT',
+           'BUYOTHER', 'BUYSTOCK', 'SELLDEBT', 'SELLMF', 'SELLOPT',
+           'SELLOTHER', 'SELLSTOCK', 'INVPOS', 'POSDEBT', 'POSMF', 'POSOPT',
+           'POSOTHER', 'POSSTOCK', 'OOBUYDEBT', 'OOBUYMF', 'OOBUYOPT',
+           'OOBUYOTHER', 'OOBUYSTOCK', 'OOSELLDEBT', 'OOSELLMF', 'OOSELLOPT',
+           'OOSELLOTHER', 'OOSELLSTOCK', 'SWITCHMF', 'INVTRANLIST',
+           'INVPOSLIST', 'INVOOLIST', 'INVSTMTRQ', 'INVSTMTRS',
+           'INVSTMTTRNRQ', 'INVSTMTTRNRS', 'INVSTMTMSGSRQV1',
+           'INVSTMTMSGSRSV1', 'INVSTMTMSGSETV1', 'INVSTMTMSGSET', ]
 
 
 # Enums used in aggregate validation
@@ -42,46 +55,29 @@ class INVACCTFROM(Aggregate):
     brokerid = String(22, required=True)
 
 
+class INCPOS(Aggregate):
+    """ OFX section 13.9.1.2 """
+    dtasof = DateTime()
+    include = Bool(required=True)
+
+
+class INVSTMTRQ(Aggregate):
+    """ OFX section 13.9.1.2 """
+    invacctfrom = SubAggregate(INVACCTFROM, required=True)
+    inctran = SubAggregate(INCTRAN)
+    incoo = Bool(required=True)
+    incpos = SubAggregate(INCPOS, required=True)
+    incbal = Bool(required=True)
+    inc401k = Bool()
+    inc401bal = Bool()
+    inctranimg = Bool()
+
+
 # Transactions
 class INVBANKTRAN(Aggregate):
     """ OFX section 13.9.2.3 """
     stmttrn = SubAggregate(STMTTRN, required=True)
     subacctfund = OneOf(*INVSUBACCTS, required=True)
-
-    @property
-    def trntype(self):
-        return self.stmttrn.trntype
-
-    @property
-    def dtposted(self):
-        return self.stmttrn.dtposted
-
-    @property
-    def trnamt(self):
-        return self.stmttrn.trnamt
-
-    @property
-    def fitid(self):
-        return self.stmttrn.fitid
-
-    @property
-    def memo(self):
-        return self.stmttrn.memo
-
-    @property
-    def curtype(self):
-        return (self.stmttrn.currency
-                or self.stmttrn.origcurrency).__class__.__name__
-
-    @property
-    def cursym(self):
-        ctype = getattr(self.stmttrn, self.curtype.lower())
-        return ctype.cursym
-
-    @property
-    def currate(self):
-        ctype = getattr(self.stmttrn, self.curtype.lower())
-        return ctype.currate
 
 
 class INVTRAN(Aggregate):
@@ -94,23 +90,7 @@ class INVTRAN(Aggregate):
     memo = String(255)
 
 
-class Invtran(object):
-    """ Mixin providing property aliases """
-
-    @property
-    def fitid(self):
-        return self.invtran.fitid
-
-    @property
-    def dttrade(self):
-        return self.invtran.dttrade
-
-    @property
-    def memo(self):
-        return self.invtran.memo
-
-
-class INVBUY(Aggregate, Invtran, Origcurrency, Secid):
+class INVBUY(Aggregate, Origcurrency):
     """ OFX section 13.9.2.4.3 """
     invtran = SubAggregate(INVTRAN, required=True)
     secid = SubAggregate(SECID, required=True)
@@ -134,63 +114,7 @@ class INVBUY(Aggregate, Invtran, Origcurrency, Secid):
     prioryearcontrib = Bool()
 
 
-class Invbuy(object):
-    """ Mixin providing property aliases """
-
-    @property
-    def uniqueid(self):
-        return self.invbuy.secid.uniqueid
-
-    @property
-    def uniqueidtype(self):
-        return self.invbuy.secid.uniqueidtype
-
-    @property
-    def units(self):
-        return self.invbuy.units
-
-    @property
-    def unitprice(self):
-        return self.invbuy.unitprice
-
-    @property
-    def total(self):
-        return self.invbuy.total
-
-    @property
-    def curtype(self):
-        return self.invbuy.curtype
-
-    @property
-    def cursym(self):
-        return self.invbuy.cursym
-
-    @property
-    def currate(self):
-        return self.invbuy.currate
-
-    @property
-    def subacctsec(self):
-        return self.invbuy.subacctsec
-
-    @property
-    def subacctfund(self):
-        return self.invbuy.subacctfund
-
-    @property
-    def fitid(self):
-        return self.invbuy.invtran.fitid
-
-    @property
-    def dttrade(self):
-        return self.invbuy.invtran.dttrade
-
-    @property
-    def memo(self):
-        return self.invbuy.invtran.memo
-
-
-class INVSELL(Aggregate, Invtran, Origcurrency, Secid):
+class INVSELL(Aggregate, Origcurrency):
     """ OFX section 13.9.2.4.3 """
     invtran = SubAggregate(INVTRAN, required=True)
     secid = SubAggregate(SECID, required=True)
@@ -215,95 +139,38 @@ class INVSELL(Aggregate, Invtran, Origcurrency, Secid):
     inv401ksource = OneOf(*INV401KSOURCES)
 
 
-class Invsell(object):
-    """ Mixin providing property aliases """
-
-    @property
-    def uniqueid(self):
-        return self.invsell.secid.uniqueid
-
-    @property
-    def uniqueidtype(self):
-        return self.invsell.secid.uniqueidtype
-
-    @property
-    def units(self):
-        return self.invsell.units
-
-    @property
-    def unitprice(self):
-        return self.invsell.unitprice
-
-    @property
-    def total(self):
-        return self.invsell.total
-
-    @property
-    def curtype(self):
-        return self.invsell.curtype
-
-    @property
-    def cursym(self):
-        return self.invsell.cursym
-
-    @property
-    def currate(self):
-        return self.invsell.currate
-
-    @property
-    def subacctsec(self):
-        return self.invsell.subacctsec
-
-    @property
-    def subacctfund(self):
-        return self.invsell.subacctfund
-
-    @property
-    def fitid(self):
-        return self.invsell.invtran.fitid
-
-    @property
-    def dttrade(self):
-        return self.invsell.invtran.dttrade
-
-    @property
-    def memo(self):
-        return self.invsell.invtran.memo
-
-
-class BUYDEBT(Aggregate, Invbuy):
+class BUYDEBT(Aggregate):
     """ OFX section 13.9.2.4.4 """
     invbuy = SubAggregate(INVBUY, required=True)
     accrdint = Decimal()
 
 
-class BUYMF(Aggregate, Invbuy):
+class BUYMF(Aggregate):
     """ OFX section 13.9.2.4.4 """
     invbuy = SubAggregate(INVBUY, required=True)
     buytype = OneOf(*BUYTYPES, required=True)
     relfitid = String(255)
 
 
-class BUYOPT(Aggregate, Invbuy):
+class BUYOPT(Aggregate):
     """ OFX section 13.9.2.4.4 """
     invbuy = SubAggregate(INVBUY, required=True)
     optbuytype = OneOf(*OPTBUYTYPES, required=True)
     shperctrct = Integer(required=True)
 
 
-class BUYOTHER(Aggregate, Invbuy):
+class BUYOTHER(Aggregate):
     """ OFX section 13.9.2.4.4 """
     invbuy = SubAggregate(INVBUY, required=True)
-    pass
 
 
-class BUYSTOCK(Aggregate, Invbuy):
+class BUYSTOCK(Aggregate):
     """ OFX section 13.9.2.4.4 """
     invbuy = SubAggregate(INVBUY, required=True)
     buytype = OneOf(*BUYTYPES, required=True)
 
 
-class CLOSUREOPT(Aggregate, Invtran, Secid):
+class CLOSUREOPT(Aggregate):
     """ OFX section 13.9.2.4.4 """
     invtran = SubAggregate(INVTRAN, required=True)
     secid = SubAggregate(SECID, required=True)
@@ -315,7 +182,7 @@ class CLOSUREOPT(Aggregate, Invtran, Secid):
     gain = Decimal()
 
 
-class INCOME(Aggregate, Invtran, Origcurrency, Secid):
+class INCOME(Aggregate, Origcurrency):
     """ OFX section 13.9.2.4.4 """
     invtran = SubAggregate(INVTRAN, required=True)
     secid = SubAggregate(SECID, required=True)
@@ -330,7 +197,7 @@ class INCOME(Aggregate, Invtran, Origcurrency, Secid):
     inv401ksource = OneOf(*INV401KSOURCES)
 
 
-class INVEXPENSE(Aggregate, Invtran, Origcurrency, Secid):
+class INVEXPENSE(Aggregate, Origcurrency):
     """ OFX section 13.9.2.4.4 """
     invtran = SubAggregate(INVTRAN, required=True)
     secid = SubAggregate(SECID, required=True)
@@ -342,7 +209,7 @@ class INVEXPENSE(Aggregate, Invtran, Origcurrency, Secid):
     inv401ksource = OneOf(*INV401KSOURCES)
 
 
-class JRNLFUND(Aggregate, Invtran):
+class JRNLFUND(Aggregate):
     """ OFX section 13.9.2.4.4 """
     invtran = SubAggregate(INVTRAN, required=True)
     subacctto = OneOf(*INVSUBACCTS, required=True)
@@ -350,7 +217,7 @@ class JRNLFUND(Aggregate, Invtran):
     total = Decimal(required=True)
 
 
-class JRNLSEC(Aggregate, Invtran, Secid):
+class JRNLSEC(Aggregate):
     """ OFX section 13.9.2.4.4 """
     invtran = SubAggregate(INVTRAN, required=True)
     secid = SubAggregate(SECID, required=True)
@@ -359,7 +226,7 @@ class JRNLSEC(Aggregate, Invtran, Secid):
     units = Decimal(required=True)
 
 
-class MARGININTEREST(Aggregate, Invtran, Origcurrency):
+class MARGININTEREST(Aggregate, Origcurrency):
     """ OFX section 13.9.2.4.4 """
     invtran = SubAggregate(INVTRAN, required=True)
     total = Decimal(required=True)
@@ -368,7 +235,7 @@ class MARGININTEREST(Aggregate, Invtran, Origcurrency):
     origcurrency = SubAggregate(ORIGCURRENCY)
 
 
-class REINVEST(Aggregate, Invtran, Origcurrency, Secid):
+class REINVEST(Aggregate, Origcurrency):
     """ OFX section 13.9.2.4.4 """
     invtran = SubAggregate(INVTRAN, required=True)
     secid = SubAggregate(SECID, required=True)
@@ -387,7 +254,7 @@ class REINVEST(Aggregate, Invtran, Origcurrency, Secid):
     inv401ksource = OneOf(*INV401KSOURCES)
 
 
-class RETOFCAP(Aggregate, Invtran, Origcurrency, Secid):
+class RETOFCAP(Aggregate, Origcurrency):
     """ OFX section 13.9.2.4.4 """
     invtran = SubAggregate(INVTRAN, required=True)
     secid = SubAggregate(SECID, required=True)
@@ -399,14 +266,14 @@ class RETOFCAP(Aggregate, Invtran, Origcurrency, Secid):
     inv401ksource = OneOf(*INV401KSOURCES)
 
 
-class SELLDEBT(Aggregate, Invsell):
+class SELLDEBT(Aggregate):
     """ OFX section 13.9.2.4.4 """
     invsell = SubAggregate(INVSELL, required=True)
     sellreason = OneOf('CALL', 'SELL', 'MATURITY', required=True)
     accrdint = Decimal()
 
 
-class SELLMF(Aggregate, Invsell):
+class SELLMF(Aggregate):
     """ OFX section 13.9.2.4.4 """
     invsell = SubAggregate(INVSELL, required=True)
     selltype = OneOf(*SELLTYPES, required=True)
@@ -414,7 +281,7 @@ class SELLMF(Aggregate, Invsell):
     relfitid = String(255)
 
 
-class SELLOPT(Aggregate, Invsell):
+class SELLOPT(Aggregate):
     """ OFX section 13.9.2.4.4 """
     invsell = SubAggregate(INVSELL, required=True)
     optselltype = OneOf(*OPTSELLTYPES, required=True)
@@ -424,18 +291,18 @@ class SELLOPT(Aggregate, Invsell):
     secured = OneOf('NAKED', 'COVERED')
 
 
-class SELLOTHER(Aggregate, Invsell):
+class SELLOTHER(Aggregate):
     """ OFX section 13.9.2.4.4 """
     invsell = SubAggregate(INVSELL, required=True)
 
 
-class SELLSTOCK(Aggregate, Invsell):
+class SELLSTOCK(Aggregate):
     """ OFX section 13.9.2.4.4 """
     invsell = SubAggregate(INVSELL, required=True)
     selltype = OneOf(*SELLTYPES, required=True)
 
 
-class SPLIT(Aggregate, Invtran, Origcurrency, Secid):
+class SPLIT(Aggregate, Origcurrency):
     """ OFX section 13.9.2.4.4 """
     invtran = SubAggregate(INVTRAN, required=True)
     secid = SubAggregate(SECID, required=True)
@@ -451,7 +318,7 @@ class SPLIT(Aggregate, Invtran, Origcurrency, Secid):
     inv401ksource = OneOf(*INV401KSOURCES)
 
 
-class TRANSFER(Aggregate, Invtran, Secid):
+class TRANSFER(Aggregate):
     """ OFX section 13.9.2.4.4 """
     invtran = SubAggregate(INVTRAN, required=True)
     secid = SubAggregate(SECID, required=True)
@@ -468,9 +335,6 @@ class TRANSFER(Aggregate, Invtran, Secid):
 
 class INVTRANLIST(TranList):
     """ OFX section 13.9.2.2 """
-    dtstart = DateTime(required=True)
-    dtend = DateTime(required=True)
-
     memberTags = ('INVBANKTRAN', 'BUYDEBT', 'BUYMF', 'BUYOPT', 'BUYOTHER',
                   'BUYSTOCK', 'CLOSUREOPT', 'INCOME', 'INVEXPENSE', 'JRNLFUND',
                   'JRNLSEC', 'MARGININTEREST', 'REINVEST', 'RETOFCAP',
@@ -479,7 +343,7 @@ class INVTRANLIST(TranList):
 
 
 # Positions
-class INVPOS(Aggregate, Secid):
+class INVPOS(Aggregate):
     """ OFX section 13.9.2.6.1 """
     secid = SubAggregate(SECID)
     heldinacct = OneOf(*INVSUBACCTS, required=True)
@@ -494,63 +358,12 @@ class INVPOS(Aggregate, Secid):
     inv401ksource = OneOf(*INV401KSOURCES)
 
 
-class Invpos(object):
-    """ Mixin providing property aliases """
-    @property
-    def uniqueid(self):
-        return self.invpos.secid.uniqueid
-
-    @property
-    def uniqueidtype(self):
-        return self.invpos.secid.uniqueidtype
-
-    @property
-    def heldinacct(self):
-        return self.invpos.heldinacct
-
-    @property
-    def postype(self):
-        return self.invpos.postype
-
-    @property
-    def units(self):
-        return self.invpos.units
-
-    @property
-    def unitprice(self):
-        return self.invpos.unitprice
-
-    @property
-    def mktval(self):
-        return self.invpos.mktval
-
-    @property
-    def dtpriceasof(self):
-        return self.invpos.dtpriceasof
-
-    @property
-    def cursym(self):
-        currency = self.invpos.currency
-        if currency:
-            return self.invpos.currency.cursym
-
-    @property
-    def currate(self):
-        currency = self.invpos.currency
-        if currency:
-            return self.invpos.currency.currate
-
-    @property
-    def memo(self):
-        return self.invpos.memo
-
-
-class POSDEBT(Aggregate, Invpos):
+class POSDEBT(Aggregate):
     """ OFX section 13.9.2.6.1 """
     invpos = SubAggregate(INVPOS, required=True)
 
 
-class POSMF(Aggregate, Invpos):
+class POSMF(Aggregate):
     """ OFX section 13.9.2.6.1 """
     invpos = SubAggregate(INVPOS, required=True)
     unitsstreet = Decimal()
@@ -559,18 +372,18 @@ class POSMF(Aggregate, Invpos):
     reinvcg = Bool()
 
 
-class POSOPT(Aggregate, Invpos):
+class POSOPT(Aggregate):
     """ OFX section 13.9.2.6.1 """
     invpos = SubAggregate(INVPOS, required=True)
     secured = OneOf('NAKED', 'COVERED')
 
 
-class POSOTHER(Aggregate, Invpos):
+class POSOTHER(Aggregate):
     """ OFX section 13.9.2.6.1 """
     invpos = SubAggregate(INVPOS, required=True)
 
 
-class POSSTOCK(Aggregate, Invpos):
+class POSSTOCK(Aggregate):
     """ OFX section 13.9.2.6.1 """
     invpos = SubAggregate(INVPOS, required=True)
     unitsstreet = Decimal()
@@ -697,11 +510,8 @@ class SWITCHMF(Aggregate):
     switchall = Bool(required=True)
 
 
-class INVOOLIST(List):
+class INVOOLIST(TranList):
     """ OFX section 13.9.2.2 """
-    dtstart = DateTime(required=True)
-    dtend = DateTime(required=True)
-
     memberTags = ['OOBUYDEBT', 'OOBUYMF', 'OOBUYOPT', 'OOBUYOTHER',
                   'OOBUYSTOCK', 'OOSELLDEBT', 'OOSELLMF', 'OOSELLOPT',
                   'OOSELLOTHER', 'OOSELLSTOCK', 'SWITCHMF', ]
@@ -716,28 +526,15 @@ class INVSTMTRS(Aggregate):
     invposlist = SubAggregate(INVPOSLIST)
     invbal = SubAggregate(INVBAL)
     # FIXME - definiing INVOOLIST blows up Aggregate.to_etree()
-    # invoolist = SubAggregate(INVOOLIST)
-    invoolist = Unsupported()
+    invoolist = SubAggregate(INVOOLIST)
+    # invoolist = Unsupported()
     mktginfo = String(360)
     inv401k = Unsupported()
     inv401kbal = SubAggregate(INV401KBAL)
 
-    # Human-friendly attribute aliases
-    @property
-    def currency(self):
-        return self.curdef
-
     @property
     def account(self):
         return self.invacctfrom
-
-    @property
-    def datetime(self):
-        return self.dtasof
-
-    @property
-    def balances(self):
-        return self.invbal
 
     @property
     def transactions(self):
@@ -746,6 +543,19 @@ class INVSTMTRS(Aggregate):
     @property
     def positions(self):
         return self.invposlist
+
+    @property
+    def balances(self):
+        return self.invbal
+
+
+class INVSTMTTRNRQ(Aggregate):
+    """ OFX section 13.9.1.1 """
+    trnuid = String(36, required=True)
+    clientcookie = String(32)
+    tan = String(80)
+    ofxextension = Unsupported()
+    invstmtrq = SubAggregate(INVSTMTRQ)
 
 
 class INVSTMTTRNRS(Aggregate):
@@ -761,10 +571,33 @@ class INVSTMTTRNRS(Aggregate):
         return self.invstmtrs
 
 
+class INVSTMTMSGSRQV1(List):
+    """ OFX section 13.7.1.2.1 """
+    memberTags = ['INVSTMTTRNRQ', ]
+
+
 class INVSTMTMSGSRSV1(List):
-    """ OFX section 11.13.1.1.2 """
+    """ OFX section 13.7.1.2.2 """
     memberTags = ['INVSTMTTRNRS', ]
 
     @property
     def statements(self):
         return [trnrs.invstmtrs for trnrs in self]
+
+
+class INVSTMTMSGSETV1(Aggregate):
+    """ OFX section 13.7.1.1 """
+    msgsetcore = SubAggregate(MSGSETCORE, required=True)
+    trandnld = Bool(required=True)
+    oodnld = Bool(required=True)
+    posdnld = Bool(required=True)
+    baldnld = Bool(required=True)
+    canemail = Bool(required=True)
+    inv401kdnld = Bool()
+    closingavail = Bool()
+    imageprof = Unsupported()
+
+
+class INVSTMTMSGSET(Aggregate):
+    """ OFX section 13.7.1.1 """
+    invstmtmsgsetv1 = SubAggregate(INVSTMTMSGSETV1, required=True)

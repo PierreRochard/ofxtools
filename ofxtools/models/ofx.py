@@ -9,31 +9,50 @@ from ofxtools.models.base import (
     SubAggregate,
     Unsupported,
 )
-from ofxtools.models.signon import SIGNONMSGSRSV1
-from ofxtools.models.bank import BANKMSGSRSV1
-from ofxtools.models.investment import INVSTMTMSGSRSV1
-from ofxtools.models.creditcard import CREDITCARDMSGSRSV1
-from ofxtools.models.seclist import SECLISTMSGSRSV1
+from ofxtools.models.signon import (SIGNONMSGSRQV1, SIGNONMSGSRSV1)
+from ofxtools.models.bank import (BANKMSGSRQV1, BANKMSGSRSV1)
+from ofxtools.models.investment import (INVSTMTMSGSRQV1, INVSTMTMSGSRSV1)
+from ofxtools.models.creditcard import (CREDITCARDMSGSRQV1, CREDITCARDMSGSRSV1)
+from ofxtools.models.seclist import (SECLISTMSGSRQV1, SECLISTMSGSRSV1)
+from ofxtools.models.profile import (PROFMSGSRQV1, PROFMSGSRSV1)
+
+
+__all__ = ['OFX']
 
 
 class OFX(Aggregate):
     """ """
-    signonmsgsrsv1 = SubAggregate(SIGNONMSGSRSV1, required=True)
+    signonmsgsrqv1 = SubAggregate(SIGNONMSGSRQV1)
+    signonmsgsrsv1 = SubAggregate(SIGNONMSGSRSV1)
+    bankmsgsrqv1 = SubAggregate(BANKMSGSRQV1)
     bankmsgsrsv1 = SubAggregate(BANKMSGSRSV1)
+    creditcardmsgsrqv1 = SubAggregate(CREDITCARDMSGSRQV1)
     creditcardmsgsrsv1 = SubAggregate(CREDITCARDMSGSRSV1)
+    invstmtmsgsrqv1 = SubAggregate(INVSTMTMSGSRQV1)
     invstmtmsgsrsv1 = SubAggregate(INVSTMTMSGSRSV1)
+    seclistmsg1rqv1 = SubAggregate(SECLISTMSGSRQV1)
     seclistmsgsrsv1 = SubAggregate(SECLISTMSGSRSV1)
+    profmsgsrqv1 = SubAggregate(PROFMSGSRQV1)
+    profmsgsrsv1 = SubAggregate(PROFMSGSRSV1)
 
     signupmsgsrsv1 = Unsupported()
     emailmsgsrsv1 = Unsupported()
     loanmsgsrsv1 = Unsupported()
     presdirmsgsrsv1 = Unsupported()
     presdlvmsgsrsv1 = Unsupported()
-    profmsgsrsv1 = Unsupported()
     tax1098msgsrsv1 = Unsupported()
     tax1099msgsrsv1 = Unsupported()
     taxw2msgsrsv1 = Unsupported()
     tax1095msgsrsv1 = Unsupported()
+
+    def __repr__(self):
+        s = "<%s fid='%s' org='%s' dtserver='%s' len(statements)=%d len(securities)=%d>"
+        return s % (self.__class__.__name__,
+                    self.sonrs.fi.fid,
+                    self.sonrs.fi.org,
+                    str(self.sonrs.dtserver),
+                    len(self.statements),
+                    len(self.securities),)
 
     # Human-friendly attribute aliases
     @property
@@ -57,13 +76,3 @@ class OFX(Aggregate):
             if msg:
                 stmts.extend(msg.statements)
         return stmts
-
-    # def __repr__(self):
-        # s = "<%s fid='%s' org='%s' dtserver='%s' len(statements)=%d len(securities)=%d>"
-        # return s % (self.__class__.__name__,
-                    # self.sonrs.fid,
-                    # self.sonrs.org,
-                    # str(self.sonrs.dtserver),
-                    # len(self.statements),
-                    # len(self.securities),)
-

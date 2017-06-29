@@ -66,6 +66,10 @@ class Element(object):
         value = self.convert(value)
         self.data[instance] = value
 
+    def __repr__(self):
+        repr = "<{} required={}>"
+        return repr.format(self.__class__.__name__, self.required)
+
 
 class Bool(Element):
     mapping = {'Y': True, 'N': False}
@@ -76,6 +80,11 @@ class Bool(Element):
                 raise ValueError("Value is required")
             else:
                 return None
+        # Pass through values already converted to bool
+        # (for instantiating from Aggregate.__init__ rather than parsed
+        # via Aggregate.from_etree)
+        if isinstance(value, bool):
+            return value
         try:
             return self.mapping[value]
         except KeyError as e:

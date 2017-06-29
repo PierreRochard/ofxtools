@@ -72,16 +72,21 @@ class Aggregate(object):
             raise ValueError(msg)
         SubClass.verify(elem)
         SubClass.groom(elem)
-        args = [] 
+        args = []
         kwargs = {}
         if issubclass(SubClass, List):
             if issubclass(SubClass, TranList):
                 dtstart, dtend = elem[:2]
-                # kwargs = {'dtstart': dtstart.text, 'dtend': dtend.text}
+                try:
+                    assert dtstart.tag == 'DTSTART'
+                    assert dtend.tag == 'DTEND'
+                except AssertionError:
+                    msg = "<{}> lacks <DTSTART> / <DTEND>".format(elem.tag)
+                    raise ValueError(msg)
                 args = [dtstart.text, dtend.text]
                 elem.remove(dtstart)
                 elem.remove(dtend)
-            args.extend([el for el in elem])
+            args.extend([Aggregate.from_etree(el) for el in elem])
         else:
             kwargs = {el.tag.lower(): (el.text or el) for el in elem}
         instance = SubClass(*args, **kwargs)
@@ -108,16 +113,11 @@ class Aggregate(object):
     def groom(elem):
         """
         Modify incoming XML data to play nice with our Python scheme.
+        Return True to mark this element to be skipped.
 
         Extend in subclass.
         """
         pass
-
-    def __repr__(self):
-        attrs = ['%s=%r' % (attr, str(getattr(self, attr)))
-                 for attr in self.elements
-                 if getattr(self, attr) is not None]
-        return '<%s %s>' % (self.__class__.__name__, ' '.join(attrs))
 
     def to_etree(self):
         """ """
@@ -128,12 +128,22 @@ class Aggregate(object):
                 continue
             elif isinstance(value, Aggregate):
                 child = value.to_etree()
+                value.ungroom(child)
                 root.append(child)
             else:
                 converter = self.__class__.__dict__[spec]
                 text = converter.unconvert(value)
                 ET.SubElement(root, spec.upper()).text = text
         return root
+
+    @staticmethod
+    def ungroom(elem):
+        """
+        Reverse groom() when converting back to ElementTree.
+
+        Extend in subclass.
+        """
+        pass
 
     @classproperty
     @classmethod
@@ -180,6 +190,34 @@ class Aggregate(object):
                 dct[k] = v
         return dct
 
+    @property
+    def _spec_repr(self):
+        """
+        Sequence of (name, repr()) for each item in the subclass spec
+        (see property above) that has a value for this instance.
+
+        Used by __repr__().
+        """
+        attrs = [(attr, repr(getattr(self, attr)))
+                 for attr in self.spec
+                 if getattr(self, attr) is not None]
+        return attrs
+
+    def __repr__(self):
+        attrs = ['{}={}'.format(*attr) for attr in self._spec_repr]
+        return '<{}({})>'.format(self.__class__.__name__, ', '.join(attrs))
+
+    def __getattr__(self, attr):
+        """ Proxy access to attributes of SubAggregates """
+        for subaggregate in self.subaggregates:
+            subagg = getattr(self, subaggregate)
+            try:
+                return getattr(subagg, attr)
+            except AttributeError:
+                continue
+        raise AttributeError("'{}' object has no attribute '{}'".format(
+            self.__class__.__name__, attr))
+
 
 class List(Aggregate, list):
     """
@@ -187,14 +225,14 @@ class List(Aggregate, list):
     """
     memberTags = []
 
-    def __init__(self, *elems):
+    def __init__(self, *members):
         list.__init__(self)
-        for member in elems:
-            if member.tag not in self.memberTags:
+        for member in members:
+            if member.__class__.__name__ not in self.memberTags:
                 msg = "{} can't contain {}".format(self.__class__.__name__,
-                                                   member.tag)
+                                                   member.__class__.__name__)
                 raise ValueError(msg)
-            self.append(Aggregate.from_etree(member))
+            self.append(member)
 
     def to_etree(self):
         """ """
@@ -209,7 +247,6 @@ class List(Aggregate, list):
                 ET.SubElement(root, spec.upper()).text = text
         # Append list items
         for member in self:
-            print("MEMBER=%s" % member)
             root.append(member.to_etree())
         return root
 
@@ -221,7 +258,7 @@ class List(Aggregate, list):
         return object.__hash__(self)
 
     def __repr__(self):
-        return '<{} len={}'.format(self.__class__.__name__, len(self))
+        return '<{} len={}>'.format(self.__class__.__name__, len(self))
 
 
 class TranList(List):
@@ -231,27 +268,13 @@ class TranList(List):
     dtstart = DateTime(required=True)
     dtend = DateTime(required=True)
 
-    def __init__(self, dtstart, dtend, *args):
+    def __init__(self, dtstart, dtend, *members):
         self.dtstart = dtstart
         self.dtend = dtend
-        # The first two children of *TRANLIST are DTSTART/DTEND.
-        # dtstart, dtend = elem[:2]
-        # if dtstart.tag != 'DTSTART':
-            # msg = "{} 1st member must be DTSTART, not {}".format(
-                # self.__class__.__name__, dtstart.tag)
-            # raise ValueError(msg)
-        # elem.remove(dtstart)
-        # self.dtstart = dtstart.text
-        # if dtend.tag != 'DTEND':
-            # msg = "{} 2nd member must be DTEND, not {}".format(
-                # self.__class__.__name__, dtend.tag)
-            # raise ValueError(msg)
-        # elem.remove(dtend)
-        # self.dtend = dtend.text
-        super(TranList, self).__init__(*args)
+        super(TranList, self).__init__(*members)
 
     def __repr__(self):
-        return '<{} dtstart={} dtend={} len={}'.format(
+        return "<{} dtstart='{}' dtend='{}' len={}>".format(
             self.__class__.__name__, self.dtstart, self.dtend, len(self))
 
 
@@ -277,6 +300,10 @@ class SubAggregate(Element):
             return value
         return Aggregate.from_etree(value)
 
+    def __repr__(self):
+        repr = "<SubAggregate {}>".format(self.type)
+        return repr
+
 
 class Unsupported(object):
     """
@@ -287,3 +314,6 @@ class Unsupported(object):
 
     def __set__(self, instance, value):
         pass
+
+    def __repr__(self):
+        return "<Unsupported>"
