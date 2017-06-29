@@ -8,7 +8,7 @@ import sys
 
 from sqlalchemy import create_engine
 
-from ofxtools.ofxalchemy import Base, DBSession, OFXParser
+from ofxtools.ofxalchemy import Base, Session, OFXParser
 
 
 def log(message, end='\n'):
@@ -27,7 +27,7 @@ if __name__ == '__main__':
 
     # DB setup
     engine = create_engine(args.output, echo=args.verbose)
-    DBSession.configure(bind=engine)
+    Session.configure(bind=engine)
     Base.metadata.create_all(engine)
 
     parser = OFXParser()
@@ -36,5 +36,5 @@ if __name__ == '__main__':
         parser.parse(filename)
         log('done. Commiting to database...', end='')
         parser.instantiate()
-        DBSession.commit()
+        Session.commit()
         log('done!')

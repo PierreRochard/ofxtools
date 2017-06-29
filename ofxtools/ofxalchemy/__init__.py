@@ -1,7 +1,7 @@
 from ofxtools.ofxalchemy.database import (
     Base,
     Session,
-    sessionmanager,
+    session_scope,
     init_db,
     get_session
     )

@@ -29,13 +29,12 @@ Session = scoped_session(sessionmaker(autocommit=False, autoflush=True,))
 
 
 @contextmanager
-def sessionmanager(sqla_uri, schema):
+def session_scope(sqla_uri):
     engine = create_engine(sqla_uri)
-    Base.metadata.schema = schema
     session_maker = sessionmaker(bind=engine)
     session = session_maker()
     try:
-        yield Session
+        yield session
         Session.commit()
     except:
         Session.rollback()
@@ -49,7 +48,6 @@ def init_db(db_uri, schema=None, **kwargs):
     Base.metadata.schema = schema
     Base.metadata.create_all(bind=engine)
     Session.configure(bind=engine)
-    return engine
 
 
 def get_session(db_uri, schema=None, **kwargs):
