@@ -36,7 +36,7 @@ TRNTYPES = ('CREDIT', 'DEBIT', 'INT', 'DIV', 'FEE', 'SRVCHG',
 
 class BANKACCTFROM(Aggregate):
     """ OFX section 11.3.1 """
-    bankid = String(9, required=True)
+    bankid = String(9)
     branchid = String(22)
     acctid = String(22, required=True)
     accttype = OneOf(*ACCTTYPES, required=True)

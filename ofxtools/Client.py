@@ -123,9 +123,12 @@ class OFXClient(object):
         if stmtrqs:
             # bankid comes from OFXClient instance attribute,
             # not StmtRq namedtuple
-            stmttrnrqs = [self.stmttrnrq(
-                **dict(stmtrq._asdict(), bankid=self.bankid))
-                for stmtrq in stmtrqs]
+            stmttrnrqs = []
+            for stmtrq in stmtrqs:
+                dict_item = dict(stmtrq._asdict(), bankid=self.bankid)
+                item = self.stmttrnrq(**dict_item)
+                stmttrnrqs.append(item)
+
             bankmsgs = BANKMSGSRQV1(*stmttrnrqs)
 
         creditcardmsgs = None
